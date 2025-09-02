@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: hahn_mssql_dc
+    ports:
+      - "1433:1433"
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "Hahn2025!"
+      MSSQL_PID: "Express"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      hahn_net:
+        ipv4_address: 10.10.0.2
+
+  backend:
+    image: sofianebenhamza/hahn-backend:latest
+    container_name: hahn_backend_dc
+    depends_on:
+      - frontend
+    ports:
+      - "5000:5000"
+    environment:
+      DEFAULT_CONNECTION: "Server=10.10.0.2,1433;Database=hahn_todolist;User Id=SA;Password=Hahn2025!;Encrypt=False;"
+    networks:
+      hahn_net:
+        ipv4_address: 10.10.0.3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: "http://10.10.0.3:5000"
+    container_name: hahn_frontend_dc
+    ports:
+      - "80:80"
+    depends_on:
+      - db
+    networks:
+      hahn_net:
+        ipv4_address: 10.10.0.4
+
+networks:
+  hahn_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.0.0/24
+          gateway: 10.10.0.1
+
